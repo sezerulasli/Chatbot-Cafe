@@ -1,5 +1,5 @@
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 from typing import Annotated, TypedDict, Literal
 from langgraph.graph import StateGraph, START, END
@@ -11,7 +11,7 @@ import sqlite3
 from langgraph.checkpoint.sqlite import SqliteSaver
 from pydantic import BaseModel, Field
 from langchain.tools.retriever import create_retriever_tool
-from langchain_community.vectorstores import Chroma
+from embeddings import vectorstore
 load_dotenv()
 
 conn = sqlite3.connect("checkpoints.sqlite", check_same_thread=False)
@@ -23,14 +23,6 @@ model = ChatOpenAI(model="gpt-4.1-nano", max_tokens=100, temperature=0.3)
 class ChatbotState(TypedDict):
     messages: Annotated[list, add_messages]
     documents: list[Document]
-
-
-Drinks = [
-    Document(page_content="We are Erdem's Cafe. We have a menu of drinks included: Espresso, Cappuccino, Latte, Americano, Mocha, Macchiato, Hot Chocolate, Green Tea, Black Tea, Herbal Tea, Iced Coffee, Iced Latte, Lemonade, Orange Juice, Apple Juice, Mineral Water, Sparkling Water, Cola, Ginger, Tuborg Gold")
-    ]
-
-embedding_tool = OpenAIEmbeddings()
-vectorstore = Chroma.from_documents(Drinks, embedding_tool)
 
 retriever_tool = vectorstore.as_retriever(search_type="mmr", search_kwargs = {"k": 3})
 
