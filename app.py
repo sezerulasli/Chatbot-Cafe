@@ -15,7 +15,7 @@ load_dotenv()
 conn = sqlite3.connect("checkpoints.sqlite", check_same_thread=False)
 memory = SqliteSaver(conn)
 
-model = ChatOpenAI(model="gpt-4.1-nano", max_tokens=100, temperature=0.3)
+model = ChatOpenAI(model="gpt-4.1-nano", max_tokens=100, temperature=0.2)
 
 
 class ChatbotState(TypedDict):
@@ -41,11 +41,15 @@ def retriever(state: ChatbotState):
 def topic_decider(state: ChatbotState):
     user_request = state["messages"][-1].content
     results = vectorstore.similarity_search_with_score(user_request, k=1)
-    threshold = 0.45
-    delta = 0.5
+    threshold = 0.47
+    delta = 0.05
 
     score_prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are a classifier agent who decides if user's request in scope our menu data or not. If request in scope you generate -> Yes , not in scope you generate -> No ."),
+        ("system", "Decide ONLY if the user's request is about the cafe's drink menu or details of products. "
+	 "Even if the requested items may NOT be on the menu, it is still IN-SCOPE. "
+	 "Examples IN-SCOPE: 'cafe's drink menu, product details, questions about drinks related on menu. "
+	 "Examples OUT-OF-SCOPE: history, politics, coding, personal info, general knowledge. "
+	 "Answer strictly 'Yes' for in-scope, 'No' for out-of-scope."),
         ("human", "{user_request}")
     ])
 
