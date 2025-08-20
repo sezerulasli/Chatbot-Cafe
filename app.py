@@ -41,13 +41,33 @@ def retriever(state: ChatbotState):
 def topic_decider(state: ChatbotState):
     user_request = state["messages"][-1].content
     results = vectorstore.similarity_search_with_score(user_request, k=1)
+   
+
+    score_prompt = ChatPromptTemplate.from_messages([
+        ("system", "You are a classifier agent who decides if user's request in scope our menu data or not. Our data : {documents}. If request in scope you generate -> Yes, not in scope you generate -> No."),
+        ("human", "{user_request}")
+    ])
+
+    decider_chain = score_prompt | model
+    decider_result = decider_chain.invoke({"user_request":user_request, "documents":state["documents"]})
     if not results:
         return {"in_scope": False}
     else:
         score = results[0][1]
+        
         print(score)
-        in_scope = score <= 0.45
-        return {"in_scope":in_scope}
+        if score <= 0.45:
+            return {"in_scope":True}
+        elif 0.45 < score <= 0.50:
+            final_dec = decider_result.content.strip().lower()
+           ##print(final_dec) - Decider'ın kontrolü.
+            if final_dec == "no":
+                return {"in_scope": False}
+            else:
+                return {"in_scope": True} 
+        else:
+            return {"in_scope": False}
+
 
 def router_by_scope(state: ChatbotState) -> Literal["in","out"]:
     in_scope = state["in_scope"]

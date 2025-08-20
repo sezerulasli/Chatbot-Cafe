@@ -3,3 +3,4 @@ venv/
 checkpoints.sqlite
 __pycache__/
 chroma_db/
+graph.png
