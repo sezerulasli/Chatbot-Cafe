@@ -10,6 +10,7 @@ from langchain.schema import Document
 import sqlite3
 from langgraph.checkpoint.sqlite import SqliteSaver
 from embeddings import vectorstore
+import uuid
 load_dotenv()
 
 conn = sqlite3.connect("checkpoints.sqlite", check_same_thread=False)
@@ -42,8 +43,8 @@ def topic_decider(state: ChatbotState):
     user_request = state["messages"][-1].content
     results = vectorstore.similarity_search_with_score(user_request, k=1)
     threshold = 0.47
-    delta = 0.05
-
+    delta = 0.04
+    decider_model = ChatOpenAI(model="gpt-4.1-nano", max_tokens=10, temperature=0.2)
     score_prompt = ChatPromptTemplate.from_messages([
         ("system", "Decide ONLY if the user's request is about the cafe's drink menu or details of products. "
 	 "Even if the requested items may NOT be on the menu, it is still IN-SCOPE. "
@@ -53,7 +54,7 @@ def topic_decider(state: ChatbotState):
         ("human", "{user_request}")
     ])
 
-    decider_chain = score_prompt | model
+    decider_chain = score_prompt | decider_model
     
     if not results:
         return {"in_scope": False}
@@ -88,11 +89,12 @@ def chatbot(state: ChatbotState):
     user_request = state["messages"][-1].content
     documents = state["documents"]
     history = state["messages"]
+    short_history = history[-2:] # her seferinde sadece son 2 mesajı alarak LLM'e göndereceğiz.
 
     response = rag_chain.invoke({
         "documents": documents,
         "user_request": user_request,
-        "history": history
+        "history": short_history
     })
 
     return {"messages": [response]}
@@ -116,7 +118,8 @@ graph.add_edge(RETRIEVER, CHATBOT)
 graph.add_conditional_edges(TOPIC_DECIDER, router_by_scope,{"in": RETRIEVER, "out":RESPONDER})
 
 app = graph.compile(checkpointer=memory)
-config = {"configurable": {"thread_id": "1"}}
+thread_id = str(uuid.uuid4()) ## her oturmda yeni bir thread_id generate edileceği için history her oturumda sıfırlanacak.
+config = {"configurable": {"thread_id": thread_id}}
 
 while True:
     user_input = input("User: ")
