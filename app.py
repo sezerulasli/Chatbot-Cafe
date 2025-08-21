@@ -27,7 +27,7 @@ class ChatbotState(TypedDict):
 retriever_tool = vectorstore.as_retriever(search_type="mmr", search_kwargs = {"k": 3})
 
 prompt = ChatPromptTemplate.from_messages([
-    ("system","You are expert barista And suggest drinks that there only are in our menu: {documents} according to user's request"),
+    ("system","You are expert barista And suggest drinks that there only are in our (We are Erdem's Cafe) menu: {documents} according to user's request"),
     MessagesPlaceholder("history"),
     ("human","{user_request}"),
     
@@ -47,10 +47,10 @@ def topic_decider(state: ChatbotState):
     decider_model = ChatOpenAI(model="gpt-4.1-nano", max_tokens=10, temperature=0.2)
     score_prompt = ChatPromptTemplate.from_messages([
         ("system", "Decide ONLY if the user's request is about the cafe's drink menu or details of products. "
-	 "Even if the requested items may NOT be on the menu, it is still IN-SCOPE. "
-	 "Examples IN-SCOPE: 'cafe's drink menu, product details, questions about drinks related on menu. "
-	 "Examples OUT-OF-SCOPE: history, politics, coding, personal info, general knowledge. "
-	 "Answer strictly 'Yes' for in-scope, 'No' for out-of-scope."),
+	    "Even if the requested items may NOT be on the menu, it is still IN-SCOPE. "
+	    "Examples IN-SCOPE: 'cafe's drink menu, product details, questions about drinks related on menu. "
+	    "Examples OUT-OF-SCOPE: history, politics, coding, personal info, general knowledge. "
+	    "Answer strictly 'Yes' for in-scope, 'No' for out-of-scope."),
         ("human", "{user_request}")
     ])
 
@@ -85,14 +85,19 @@ def router_by_scope(state: ChatbotState) -> Literal["in","out"]:
 def responder(state: ChatbotState):
     return {"messages": [AIMessage(content="I'm sorry, I can't answer this question.")]}
 
+def format_docs(docs: list[Document]) -> str:
+    return "\n".join(f"-{d.page_content}"for d in docs)
+
+
 def chatbot(state: ChatbotState):
     user_request = state["messages"][-1].content
     documents = state["documents"]
     history = state["messages"]
     short_history = history[-2:] # her seferinde sadece son 2 mesajı alarak LLM'e göndereceğiz.
 
+    docs_text = format_docs(documents)
     response = rag_chain.invoke({
-        "documents": documents,
+        "documents": docs_text,
         "user_request": user_request,
         "history": short_history
     })
