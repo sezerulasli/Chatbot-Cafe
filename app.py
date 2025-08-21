@@ -24,10 +24,11 @@ class ChatbotState(TypedDict):
     documents: list[Document]
     in_scope: bool
 
-retriever_tool = vectorstore.as_retriever(search_type="mmr", search_kwargs = {"k": 3})
+retriever_tool = vectorstore.as_retriever(search_type="similarity_score_threshold", search_kwargs = {"k": 20, "score_threshold":0.3})
 
 prompt = ChatPromptTemplate.from_messages([
-    ("system","You are expert barista And suggest drinks that there only are in our (We are Erdem's Cafe) menu: {documents} according to user's request"),
+    ("system","You are expert barista And suggest drinks that there only are in our (We are Erdem's Cafe) menu: {documents} according to user's request"
+    "Keep your answers not so long and your suggestions must fit ONLY with products with its specifications in our menu."),
     MessagesPlaceholder("history"),
     ("human","{user_request}"),
     
@@ -93,7 +94,7 @@ def chatbot(state: ChatbotState):
     user_request = state["messages"][-1].content
     documents = state["documents"]
     history = state["messages"]
-    short_history = history[-2:] # her seferinde sadece son 2 mesajı alarak LLM'e göndereceğiz.
+    short_history = history[-4:] # her seferinde sadece son 4 mesajı alarak LLM'e göndereceğiz.
 
     docs_text = format_docs(documents)
     response = rag_chain.invoke({
@@ -133,4 +134,4 @@ while True:
     else:
         result = app.invoke({"messages": [HumanMessage(content=user_input)]}, config=config)
 
-        print(result["messages"][-1].content)
+        print("Cafe Assistant: ", result["messages"][-1].content)
