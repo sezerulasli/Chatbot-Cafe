@@ -9,7 +9,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 from langchain.schema import Document
 import sqlite3
 from langgraph.checkpoint.sqlite import SqliteSaver
-from embeddings import vectorstore
+from chatbot.embeddings import vectorstore
 import uuid
 load_dotenv()
 
@@ -17,7 +17,6 @@ conn = sqlite3.connect("checkpoints.sqlite", check_same_thread=False)
 memory = SqliteSaver(conn)
 
 model = ChatOpenAI(model="gpt-4.1-nano", max_tokens=100, temperature=0.2)
-
 
 class ChatbotState(TypedDict):
     messages: Annotated[list, add_messages]
@@ -77,7 +76,7 @@ def topic_decider(state: ChatbotState):
         
 
 
-def router_by_scope(state: ChatbotState) -> Literal["in","out"]:
+def router_by_scope(state: ChatbotState) -> Literal["in","out"]: ## Sadece in ve out çıktısını vermesi için kullanılıyor.
     in_scope = state["in_scope"]
     if in_scope:
         return "in"
@@ -124,14 +123,14 @@ graph.add_edge(RETRIEVER, CHATBOT)
 graph.add_conditional_edges(TOPIC_DECIDER, router_by_scope,{"in": RETRIEVER, "out":RESPONDER})
 
 app = graph.compile(checkpointer=memory)
-thread_id = str(uuid.uuid4()) ## her oturmda yeni bir thread_id generate edileceği için history her oturumda sıfırlanacak.
-config = {"configurable": {"thread_id": thread_id}}
 
-while True:
-    user_input = input("User: ")
-    if user_input.lower() in ["exit", "quit"]:
-        break
-    else:
-        result = app.invoke({"messages": [HumanMessage(content=user_input)]}, config=config)
-
-        print("Cafe Assistant: ", result["messages"][-1].content)
+if __name__ == "__main__":   ## Burası chatbot'un API dışında CLI'da çalışmasını sağlayacak yer.
+    thread_id = str(uuid.uuid4()) ## her oturmda yeni bir thread_id generate edileceği için history her oturumda sıfırlanacak.
+    config = {"configurable": {"thread_id": thread_id}}
+    while True:
+        user_input = input("User: ")
+        if user_input.lower() in ["exit", "quit"]:
+            break
+        else:
+            result = app.invoke({"messages": [HumanMessage(content=user_input)]}, config=config)
+            print("Cafe Assistant: ", result["messages"][-1].content)

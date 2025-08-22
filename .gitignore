@@ -4,3 +4,5 @@ checkpoints.sqlite
 __pycache__/
 chroma_db/
 graph.png
+backend/__pycache__
+chatbot/checkpoints.sqlite
